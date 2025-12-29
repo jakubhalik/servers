@@ -1,25 +1,30 @@
-use actix_web::{web, App, HttpServer, HttpResponse};
+use actix_web::{get, post, put, delete, web, App, HttpServer, HttpResponse};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Mutex;
+use std::env;
+use std::net::TcpListener;
 
-#[derive(Clone, Serialize, Deserialize)]
+type Identifier = u64;
+
+#[derive(Clone, Serialize)]
 struct Item {
     name: String,
-    quantity: u32,
+    quantity: Identifier,
 }
 
 struct Storage {
-    items: Mutex<HashMap<u32, Item>>,
-    counter: Mutex<u32>,
+    items: Mutex<HashMap<Identifier, Item>>,
+    counter: Mutex<Identifier>,
 }
 
 #[derive(Deserialize)]
 struct ItemInput {
     name: String,
-    quantity: u32,
+    quantity: Identifier,
 }
 
+#[post("/items")]
 async fn create_item(storage: web::Data<Storage>, body: web::Json<ItemInput>) -> HttpResponse {
     let mut items = storage.items.lock().unwrap();
     let mut counter = storage.counter.lock().unwrap();
@@ -29,7 +34,20 @@ async fn create_item(storage: web::Data<Storage>, body: web::Json<ItemInput>) ->
     HttpResponse::Created().json(serde_json::json!({"identifier": identifier}))
 }
 
-async fn get_item(storage: web::Data<Storage>, path: web::Path<u32>) -> HttpResponse {
+#[get("/")]
+async fn get_root(storage: web::Data<Storage>) -> HttpResponse {
+    let items = storage.items.lock().unwrap();
+    HttpResponse::Ok().json(items.clone())
+}
+
+#[get("/items")]
+async fn get_all_items(storage: web::Data<Storage>) -> HttpResponse {
+    let items = storage.items.lock().unwrap();
+    HttpResponse::Ok().json(items.clone())
+}
+
+#[get("/items/{identifier}")]
+async fn get_item(storage: web::Data<Storage>, path: web::Path<Identifier>) -> HttpResponse {
     let items = storage.items.lock().unwrap();
     match items.get(&path.into_inner()) {
         Some(item) => HttpResponse::Ok().json(item),
@@ -37,7 +55,8 @@ async fn get_item(storage: web::Data<Storage>, path: web::Path<u32>) -> HttpResp
     }
 }
 
-async fn update_item(storage: web::Data<Storage>, path: web::Path<u32>, body: web::Json<ItemInput>) -> HttpResponse {
+#[put("/items/{identifier}")]
+async fn update_item(storage: web::Data<Storage>, path: web::Path<Identifier>, body: web::Json<ItemInput>) -> HttpResponse {
     let mut items = storage.items.lock().unwrap();
     let identifier = path.into_inner();
     match items.get_mut(&identifier) {
@@ -50,7 +69,8 @@ async fn update_item(storage: web::Data<Storage>, path: web::Path<u32>, body: we
     }
 }
 
-async fn delete_item(storage: web::Data<Storage>, path: web::Path<u32>) -> HttpResponse {
+#[delete("/items/{identifier}")]
+async fn delete_item(storage: web::Data<Storage>, path: web::Path<Identifier>) -> HttpResponse {
     let mut items = storage.items.lock().unwrap();
     match items.remove(&path.into_inner()) {
         Some(item) => HttpResponse::Ok().json(item),
@@ -66,20 +86,35 @@ async fn main() -> std::io::Result<()> {
     });
 
     const LOCALHOST: &str = "127.0.0.1";
-    const IP: &str = localhost;
-    const PORT: u16 = 8080;
+    const IP: &str = LOCALHOST;
+    const DEFAULT_PORT: u16 = 8080;
 
-    println!("Running on http://{IP}:{PORT}");
+    let mut port: u16 = match env::args().nth(1) {
+        Some(arg) => arg.parse().expect("Invalid port number"),
+        None => {
+            println!("No port argument provided, running with {DEFAULT_PORT}");
+            DEFAULT_PORT
+        }
+    };
+
+    while TcpListener::bind((IP, port)).is_err() {
+        println!("Port {} is taken, trying {}", port, port + 1);
+        port += 1;
+    }
+
+    println!("Running on http://{IP}:{port}");
 
     HttpServer::new(move || {
         App::new()
             .app_data(storage.clone())
-            .route("/items", web::post().to(create_item))
-            .route("/items/{identifier}", web::get().to(get_item))
-            .route("/items/{identifier}", web::put().to(update_item))
-            .route("/items/{identifier}", web::delete().to(delete_item))
+            .service(create_item)
+            .service(get_item)
+            .service(update_item)
+            .service(delete_item)
+            .service(get_all_items)
+            .service(get_root)
     })
-    .bind((IP, PORT))?
+    .bind((IP, port))?
     .run()
     .await
 }

@@ -9,3 +9,10 @@ clc_test() {
 
 clct() {clc_test $@}
 
+clp() {
+    curl -X POST localhost:$1 -H "Content-Type: application/json" -d $2
+}
+
+clu() {
+    curl -X PUT localhost:$1 -H "Content-Type: application/json" -d $2
+}
