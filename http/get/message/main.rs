@@ -35,7 +35,8 @@ async fn main() -> std::io::Result<()> {
     ];
     let debug = args.iter().any(|arg| debug_flags.contains(&arg.as_str()));
 
-    let args_filtered: Vec<String> = args.iter().filter(|arg| !debug_flags.contains(&arg.as_str())).cloned().collect();
+    let args_filtered: Vec<String> = 
+        args.iter().filter(|arg| !debug_flags.contains(&arg.as_str())).cloned().collect();
 
     let message = args_filtered.get(1).cloned().unwrap_or_else(|| {
         println!("No message provided, using 'Hello, World!'");
