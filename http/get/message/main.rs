@@ -35,25 +35,26 @@ async fn main() -> std::io::Result<()> {
 
     let args: Vec<String> = env::args().collect();
 
-    let mut port: u16 = args
+    let mut port: u16 = args.iter()
         .find(|arg| arg.parse::<u16>().is_ok())
         .and_then(|arg| arg.parse().ok())
         .unwrap_or_else(|| {
             println!("No port provided, using {DEFAULT_PORT}");
             DEFAULT_PORT
         });
-    const index_of_port: usize = 
+    let index_of_port: usize = args.iter()
         .position(|arg| arg == &port.to_string())
         .unwrap_or(usize::MAX);
 
     let debug_flags = [
         "-d", "-debug", "--debug", "-m", "-monitor", "--monitor"
     ];
+    let debug: bool = args.iter().any(|arg| debug_flags.contains(&arg.as_str()));
 
     let message = args.iter()
         .enumerate()
         .skip(1)
-        .find(|(index, arg)| *index != index_of_port && !debug_flags.contains(&arg.as_str()))
+        .find(|(indx, arg)| *indx != index_of_port && !debug_flags.contains(&arg.as_str()))
         .map(|(_, arg)| arg.clone())
         .unwrap_or_else(|| {
             println!("No message provided, using 'Hello, World!'");
