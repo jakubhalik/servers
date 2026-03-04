@@ -35,25 +35,29 @@ async fn main() -> std::io::Result<()> {
 
     let args: Vec<String> = env::args().collect();
 
-    let debug_flags = [
-        "-d", "-debug", "--debug", "-m", "-monitor", "--monitor"
-    ];
-    let debug = args.iter().any(|arg| debug_flags.contains(&arg.as_str()));
-
-    let args_filtered: Vec<String> = 
-        args.iter().filter(|arg| !debug_flags.contains(&arg.as_str())).cloned().collect();
-
-    let message = args_filtered.get(1).cloned().unwrap_or_else(|| {
-        println!("No message provided, using 'Hello, World!'");
-        "Hello, World!".to_string()
-    });
-
-    let mut port: u16 = args_filtered
-        .get(2)
+    let mut port: u16 = args
+        .find(|arg| arg.parse::<u16>().is_ok())
         .and_then(|arg| arg.parse().ok())
         .unwrap_or_else(|| {
             println!("No port provided, using {DEFAULT_PORT}");
             DEFAULT_PORT
+        });
+    const index_of_port: usize = 
+        .position(|arg| arg == &port.to_string())
+        .unwrap_or(usize::MAX);
+
+    let debug_flags = [
+        "-d", "-debug", "--debug", "-m", "-monitor", "--monitor"
+    ];
+
+    let message = args.iter()
+        .enumerate()
+        .skip(1)
+        .find(|(index, arg)| *index != index_of_port && !debug_flags.contains(&arg.as_str()))
+        .map(|(_, arg)| arg.clone())
+        .unwrap_or_else(|| {
+            println!("No message provided, using 'Hello, World!'");
+            "Hello, World!".to_string()
         });
 
     while TcpListener::bind((IP, port)).is_err() {
