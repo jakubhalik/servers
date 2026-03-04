@@ -15,8 +15,13 @@ struct State {
 async fn index(state: web::Data<State>) -> HttpResponse {
     if state.debug {
         let count = state.request_count.fetch_add(1, Ordering::Relaxed) + 1;
-        let uptime = state.start_time.elapsed().as_secs();
-        println!("Request #{count} | Uptime: {uptime}s");
+        let elapsed = state.start_time.elapsed();
+        let total_nanos = elapsed.as_nanos();
+        let secs = total_nanos / 1_000_000_000;
+        let ms = (total_nanos % 1_000_000_000) / 1_000_000;
+        let us = (total_nanos % 1_000_000) / 1_000;
+        let ns = total_nanos % 1_000;
+        println!("Request #{count} | Uptime: {secs}s {ms}ms {us}µs {ns}ns");
     }
     HttpResponse::Ok().body(state.text.clone())
 }
