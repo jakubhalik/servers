@@ -37,9 +37,13 @@ async fn index(state: web::Data<State>) -> HttpResponse {
             format!("{} ({})", with_spaces, scientific)
         }
 
-        fn time_val(metric: &mut u128, prev_metric: &mut u128, divide_by: u128) {
-            *metric = *prev_metric / divide_by;
-            *prev_metric -= divide_by;
+        fn time_val(metric: &mut u128, prevMetric: &mut u128, divideBy: u128) {
+            if *metric == 0 {
+                *metric = *prevMetric / divideBy;
+            } else {
+                *metric += 1;
+            }
+            *prevMetric = *prevMetric % divideBy;
         }
 
         let elapsed = state.start_time.elapsed();
@@ -48,7 +52,9 @@ async fn index(state: web::Data<State>) -> HttpResponse {
         let ms: u128 = ((total_nanos % 1_000_000_000) / 1_000_000);
         let us: u128 = ((total_nanos % 1_000_000) / 1_000);
         let ns: u128 = (total_nanos % 1_000);
-        let (mut years, mut months, mut days, mut hours, mut mins) = (0, 0, 0, 0, 0);
+        let (mut years, mut months, mut days, mut hours, mut mins): 
+            (u128, u128, u128, u128, u128) = 
+                 (0, 0, 0, 0, 0);
         if secs >= 60 {
             time_val(&mut mins, &mut secs, 60);
             if mins >= 60 {
