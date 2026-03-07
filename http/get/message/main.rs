@@ -14,15 +14,78 @@ struct State {
 #[get("/")]
 async fn index(state: web::Data<State>) -> HttpResponse {
     if state.debug {
+
         let count = state.request_count.fetch_add(1, Ordering::Relaxed) + 1;
+        fn format_request_number(count: u64) -> String {
+            let with_spaces = count.to_string()
+                .chars()
+                .rev()
+                .collect::<Vec<_>>()
+                .chunks(3)
+                .map(|chunk| chunk.iter().collect::<String>())
+                .collect::<Vec<_>>()
+                .join(" ")
+                .chars()
+                .rev()
+                .collect::<String>();
+            let scientific = { 
+                let exponent = (count as f64).log10().floor() as i32;
+                let coefficient = (count as f64) / 10f64.powi(exponent);
+                format!("{:.0}×10^{}", coefficient, exponent)
+            };
+
+            format!("{} ({})", with_spaces, scientific)
+        }
+
+        fn time_val(metric: &mut u128, prev_metric: &mut u128, divide_by: u128) {
+            *metric = *prev_metric / divide_by;
+            *prev_metric -= divide_by;
+        }
+
         let elapsed = state.start_time.elapsed();
         let total_nanos = elapsed.as_nanos();
-        let secs = total_nanos / 1_000_000_000;
-        let ms = (total_nanos % 1_000_000_000) / 1_000_000;
-        let us = (total_nanos % 1_000_000) / 1_000;
-        let ns = total_nanos % 1_000;
-        println!("Request #{count} | Uptime: {secs}s {ms}ms {us}µs {ns}ns");
+        let mut secs: u128 = (total_nanos / 1_000_000_000);
+        let ms: u128 = ((total_nanos % 1_000_000_000) / 1_000_000);
+        let us: u128 = ((total_nanos % 1_000_000) / 1_000);
+        let ns: u128 = (total_nanos % 1_000);
+        let (mut years, mut months, mut days, mut hours, mut mins) = (0, 0, 0, 0, 0);
+        if secs >= 60 {
+            time_val(&mut mins, &mut secs, 60);
+            if mins >= 60 {
+                time_val(&mut hours, &mut mins, 60);
+                if hours >= 24 {
+                    time_val(&mut days, &mut hours, 24);
+                    if days >= 30 {
+                        time_val(&mut months, &mut days, 30);
+                        if months >= 12 {
+                            time_val(&mut years, &mut months, 12);
+                        }
+                    }
+                }
+            }
+        }
+        let units = [
+            (years, "y"),
+            (months, "mo"),
+            (days, "d"),
+            (hours, "h"),
+            (mins, "m"),
+            (secs, "s"),
+            (ms, "ms"),
+            (us, "µs"),
+            (ns, "ns"),
+        ];
+        let uptime_str = units
+            .iter()
+            .filter_map(|(number, unit)| (*number > 0).then(|| format!("{}{}", number, unit)))
+            .collect::<Vec<_>>()
+            .join(" ");
+        let display = if uptime_str.is_empty() { "" } else { &uptime_str };
+
+
+        println!("Request #{} | Uptime: {}", format_request_number(count), display);
     }
+
     HttpResponse::Ok().body(state.text.clone())
 }
 
