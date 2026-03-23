@@ -16,6 +16,13 @@ dev.sh will be full of funcs that are only helpful for development on the lib.sh
 
 `http_get_mess 8080 $(head -c 10000 /dev/urandom | tr -dc 'A-Za-z')`
 
+- defaultly will run on localhost
+- run on 0.0.0.0 to be publicly available as long as firewall allows access to that port
+`http_get_mess --public`
+`http_get_mess --public helo`
+`http_get_mess -p helo -d 1024`
+
+
 lib.sh or dev.sh must be sourced if u wanna run some of below
 
 

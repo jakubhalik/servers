@@ -99,7 +99,7 @@ async fn index(state: web::Data<State>) -> HttpResponse {
 async fn main() -> std::io::Result<()> {
 
     const LOCALHOST: &str = "127.0.0.1";
-    const IP: &str = LOCALHOST;
+    const PUBLIC: &str = "0.0.0.0";
     const DEFAULT_PORT: u16 = 8080;
 
     let args: Vec<String> = env::args().collect();
@@ -120,10 +120,21 @@ async fn main() -> std::io::Result<()> {
     ];
     let debug: bool = args.iter().any(|arg| debug_flags.contains(&arg.as_str()));
 
+    let public_flags = [
+        "-p", "--public"
+    ];
+    let public: bool = args.iter().any(|arg| debug_flags.contains(&arg.as_str()));
+
+    let IP: &str = if public { PUBLIC } else { LOCALHOST };
+
     let message = args.iter()
         .enumerate()
         .skip(1)
-        .find(|(indx, arg)| *indx != index_of_port && !debug_flags.contains(&arg.as_str()))
+        .find(
+            |(indx, arg)| *indx != index_of_port 
+            && !debug_flags.contains(&arg.as_str())
+            && !public_flags.contains(&arg.as_str())
+        )
         .map(|(_, arg)| arg.clone())
         .unwrap_or_else(|| {
             println!("No message provided, using 'Hello, World!'");
@@ -157,3 +168,4 @@ async fn main() -> std::io::Result<()> {
     .run()
     .await
 }
+

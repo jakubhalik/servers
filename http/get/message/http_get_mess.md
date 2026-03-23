@@ -9,3 +9,10 @@
 - can run with quite huge messages if u're into that
 
 `http_get_mess 8080 $(head -c 10000 /dev/urandom | tr -dc 'A-Za-z')`
+
+- defaultly will run on localhost
+- run on 0.0.0.0 to be publicly available as long as firewall allows access to that port
+`http_get_mess --public`
+`http_get_mess --public helo`
+`http_get_mess -p helo -d 1024`
+
