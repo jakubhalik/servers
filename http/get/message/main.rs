@@ -123,7 +123,7 @@ async fn main() -> std::io::Result<()> {
     let public_flags = [
         "-p", "--public"
     ];
-    let public: bool = args.iter().any(|arg| debug_flags.contains(&arg.as_str()));
+    let public: bool = args.iter().any(|arg| public_flags.contains(&arg.as_str()));
 
     let IP: &str = if public { PUBLIC } else { LOCALHOST };
 
